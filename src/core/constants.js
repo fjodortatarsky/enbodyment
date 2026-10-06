@@ -35,4 +35,8 @@ export const GameEvent = Object.freeze({
   STATION_EXPIRED: 'station/expired',
 
   PLAYER_CRASHED: 'player/crashed',
+
+  // Новые события для feedback системы
+  THRUST_CHANGED: 'input/thrust-changed',
+  BRAKE_CHANGED: 'input/brake-changed',
 });
