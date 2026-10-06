@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>N-Body Refactor — Render</title>
+
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #04060a;
+      color: #eaf2ff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+
+    #game {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    #hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .hud-top {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .hud-stat {
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: rgba(5, 10, 18, 0.55);
+      border: 1px solid rgba(120, 170, 255, 0.16);
+      backdrop-filter: blur(6px);
+      font-size: 13px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .hud-buttons {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid rgba(120, 170, 255, 0.22);
+      background: rgba(8, 14, 24, 0.72);
+      color: #eaf2ff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      line-height: 1;
+      min-width: 44px;
+      min-height: 44px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:active {
+      transform: translateY(1px);
+      background: rgba(22, 34, 54, 0.82);
+    }
+
+    .hud-controls {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      padding: 18px;
+      pointer-events: none;
+    }
+
+    .control-button {
+      pointer-events: auto;
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      font-size: 30px;
+      display: grid;
+      place-items: center;
+      touch-action: none;
+    }
+
+    .control-button.small {
+      width: 72px;
+      height: 72px;
+      font-size: 22px;
+    }
+
+    @media (max-width: 640px) {
+      .hud-stat {
+        font-size: 12px;
+      }
+
+      button {
+        padding: 8px 10px;
+        min-width: 40px;
+        min-height: 40px;
+      }
+
+      .control-button {
+        width: 76px;
+        height: 76px;
+      }
+
+      .control-button.small {
+        width: 64px;
+        height: 64px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="hud-top">
+      <div class="hud-stat" id="score">Очки: 0</div>
+      <div class="hud-stat" id="time-scale">Скорость времени: 1.0x</div>
+      <div class="hud-stat" id="status">Игра</div>
+      <div class="hud-stat" id="sensor-debug">Датчики: выкл</div>
+
+      <div class="hud-buttons">
+	      <button id="btn-sensors">Включить датчики</button>
+	      <button id="btn-time-down" title="Медленнее">−</button>
+	      <button id="btn-time-up" title="Быстрее">+</button>
+	      <button id="btn-pause">Пауза</button>
+	      <button id="btn-reset">Сброс</button>
+	      <button id="btn-fullscreen" title="Во весь экран">⛶</button>
+      </div>
+    </div>
+
+    <div class="hud-controls">
+      <button id="btn-brake" class="control-button small">■</button>
+      <button id="btn-thrust" class="control-button">▶</button>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
