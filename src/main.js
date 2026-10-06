@@ -70,7 +70,7 @@ function seedDemoWorld(targetWorld) {
   targetWorld.stations.length = 0;
 
   // Игрок стартует так, чтобы смотреть вперёд по +Z.
-  targetWorld.player.position = vec(0, 0, -220);
+  targetWorld.player.position = vec(0, 0, -2200);
   targetWorld.player.velocity = vec(0, 0, 60);
   targetWorld.player.heading = vec(0, 0, 1);
 
@@ -542,3 +542,49 @@ function toggleFullscreen() {
     // Ничего критичного, если браузер отказался входить в полноэкранный режим.
   });
 }
+
+// ==========================================
+// Логика экрана входа
+// ==========================================
+const loginScreen = document.getElementById('login-screen');
+const btnStartGame = document.getElementById('btn-start-game');
+const btnGenerateId = document.getElementById('btn-generate-id');
+const networkIdInput = document.getElementById('network-id-input');
+
+// Пока без логики, просто заглушка для будущего функционала
+btnGenerateId?.addEventListener('click', () => {
+  console.log('Генерация ID: пока не реализовано');
+  // В будущем здесь будет логика генерации или запроса ID
+});
+
+btnStartGame?.addEventListener('click', async () => {
+  // 1. Скрываем экран входа
+  if (loginScreen) {
+    loginScreen.style.display = 'none';
+  }
+
+  // 2. Разворачиваем на полный экран
+  // (Вызов внутри обработчика клика является валидным пользовательским жестом для браузеров)
+  toggleFullscreen();
+
+  // 3. Включаем датчики (запрашиваем разрешение, особенно критично для iOS 13+)
+  if (orientationInput && !orientationInput.isEnabled()) {
+    try {
+      if (btnSensors) {
+        btnSensors.textContent = '...включение...';
+        btnSensors.disabled = true;
+      }
+
+      const result = await orientationInput.enable();
+
+      if (result.enabled) {
+        updateSensorButton({ status: 'enabled' });
+      } else {
+        updateSensorButton({ status: result.reason || 'error' });
+      }
+    } catch (error) {
+      console.error('Ошибка включения датчиков:', error);
+      updateSensorButton({ status: 'error' });
+    }
+  }
+});

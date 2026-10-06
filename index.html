@@ -121,31 +121,120 @@
       font-size: 22px;
     }
 
+    /* --- Стили для экрана входа --- */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      background: #04060a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .login-title {
+      font-size: 28px;
+      margin-bottom: 12px;
+      color: #eaf2ff;
+      font-weight: 600;
+    }
+
+    .login-subtitle {
+      font-size: 16px;
+      color: #a0b4d0;
+      margin-bottom: 40px;
+      max-width: 400px;
+      line-height: 1.5;
+    }
+
+    .login-input-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .login-input {
+      flex: 1;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(120, 170, 255, 0.22);
+      background: rgba(8, 14, 24, 0.72);
+      color: #eaf2ff;
+      font-size: 16px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .login-input::placeholder {
+      color: rgba(234, 242, 255, 0.4);
+    }
+
+    .login-input:focus {
+      border-color: rgba(120, 170, 255, 0.5);
+      background: rgba(12, 20, 36, 0.9);
+    }
+
+    .btn-start {
+      padding: 16px 40px;
+      border-radius: 16px;
+      border: 1px solid rgba(120, 170, 255, 0.4);
+      background: rgba(60, 120, 255, 0.25);
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      min-width: 240px;
+      min-height: 56px;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn-start:active {
+      transform: translateY(2px);
+      background: rgba(60, 120, 255, 0.4);
+    }
+
     @media (max-width: 640px) {
-      .hud-stat {
-        font-size: 12px;
-      }
-
-      button {
-        padding: 8px 10px;
-        min-width: 40px;
-        min-height: 40px;
-      }
-
-      .control-button {
-        width: 76px;
-        height: 76px;
-      }
-
-      .control-button.small {
-        width: 64px;
-        height: 64px;
-      }
+      .hud-stat { font-size: 12px; }
+      button { padding: 8px 10px; min-width: 40px; min-height: 40px; }
+      .control-button { width: 76px; height: 76px; }
+      .control-button.small { width: 64px; height: 64px; }
+      
+      .login-title { font-size: 24px; }
+      .login-subtitle { font-size: 15px; }
+      .login-input-group { flex-direction: column; }
+      .btn-start { width: 100%; max-width: 360px; }
     }
   </style>
 </head>
 <body>
   <canvas id="game"></canvas>
+
+  <!-- Экран входа -->
+  <div id="login-screen">
+    <div class="login-title">Добро пожаловать</div>
+    <div class="login-subtitle">
+      Исследуйте гравитационные поля, управляйте кораблём и собирайте станции. 
+      Для полного погружения игра автоматически развернётся на весь экран и запросит доступ к датчикам движения.
+    </div>
+    
+    <div class="login-input-group">
+      <input 
+        id="network-id-input" 
+        class="login-input" 
+        type="text" 
+        placeholder="Сетевой ID" 
+        autocomplete="off"
+      />
+      <button id="btn-generate-id">Сгенерировать</button>
+    </div>
+
+    <button id="btn-start-game" class="btn-start">Начать игру</button>
+  </div>
 
   <div id="hud">
     <div class="hud-top">
