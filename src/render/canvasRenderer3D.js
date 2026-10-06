@@ -65,6 +65,18 @@ export function createCanvasRenderer(canvas) {
       }
     }
 
+    // Отрисовка локального корабля (голубоватый)
+    if (world.player && world.player.alive) {
+      drawShip(context, camera, basis, focal, width, height, world.player, 'rgba(100, 200, 255, 0.5)');
+    }
+
+    // Отрисовка удалённых игроков (красноватый)
+    if (world.remotePlayers) {
+      for (const remote of world.remotePlayers.values()) {
+        drawShip(context, camera, basis, focal, width, height, remote, 'rgba(255, 100, 100, 0.6)');
+      }
+    }
+
     drawReticle(context, width, height);
   }
 
@@ -339,5 +351,48 @@ function drawReticle(context, width, height) {
 
   context.beginPath();
   context.arc(cx, cy, 2, 0, Math.PI * 2);
+  context.stroke();
+}
+
+function drawShip(context, camera, basis, focal, width, height, ship, color) {
+  // Интерполяция позиции для плавности движения удалённых игроков
+  const pos = ship.position;
+  const target = ship.targetPosition || pos;
+
+  // Плавное приближение к целевой позиции (экспоненциальное сглаживание)
+  pos.x += (target.x - pos.x) * 0.2;
+  pos.y += (target.y - pos.y) * 0.2;
+  pos.z += (target.z - pos.z) * 0.2;
+
+  const f = ship.forward;
+  const r = ship.right;
+  const u = ship.up;
+
+  // Вершины конуса (пирамиды): остриё вперёд, основание сзади
+  const tip = { x: pos.x + f.x * 2.0, y: pos.y + f.y * 2.0, z: pos.z + f.z * 2.0 };
+  const b1 = { x: pos.x - f.x * 0.5 + r.x * 0.8 + u.x * 0.5, y: pos.y - f.y * 0.5 + r.y * 0.8 + u.y * 0.5, z: pos.z - f.z * 0.5 + r.z * 0.8 + u.z * 0.5 };
+  const b2 = { x: pos.x - f.x * 0.5 - r.x * 0.8 + u.x * 0.5, y: pos.y - f.y * 0.5 - r.y * 0.8 + u.y * 0.5, z: pos.z - f.z * 0.5 - r.z * 0.8 + u.z * 0.5 };
+  const b3 = { x: pos.x - f.x * 0.5 - u.x * 1.0, y: pos.y - f.y * 0.5 - u.y * 1.0, z: pos.z - f.z * 0.5 - u.z * 1.0 };
+
+  const pTip = projectPoint(camera, basis, focal, width, height, tip);
+  const p1 = projectPoint(camera, basis, focal, width, height, b1);
+  const p2 = projectPoint(camera, basis, focal, width, height, b2);
+  const p3 = projectPoint(camera, basis, focal, width, height, b3);
+
+  // Если корабль за камерой, не рисуем
+  if (!pTip || !p1 || !p2 || !p3) return;
+
+  context.beginPath();
+  context.moveTo(pTip.x, pTip.y);
+  context.lineTo(p1.x, p1.y);
+  context.lineTo(p2.x, p2.y);
+  context.lineTo(p3.x, p3.y);
+  context.closePath();
+
+  context.fillStyle = color;
+  context.fill();
+
+  context.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+  context.lineWidth = 1.5;
   context.stroke();
 }

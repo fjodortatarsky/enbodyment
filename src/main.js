@@ -29,11 +29,28 @@ import { createCanvasRenderer } from './render/canvasRenderer3D.js';
 
 import { createDeviceOrientationQuatInput } from './input/deviceOrientationQuat.js';
 
+import { createMultiplayer } from './network/multiplayer.js';
+
 const canvas = document.getElementById('game');
 const renderer = createCanvasRenderer(canvas);
 
 const eventBus = createEventBus();
 const world = createWorld({ seed: 1 });
+
+const multiplayer = createMultiplayer(world, eventBus);
+const roomInfoEl = document.getElementById('room-info');
+const roomIdEl = document.getElementById('room-id');
+if (roomInfoEl && roomIdEl) {
+  roomIdEl.textContent = multiplayer.roomId;
+  roomInfoEl.addEventListener('click', () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      const originalText = roomInfoEl.innerHTML;
+      roomInfoEl.innerHTML = '<span style="color: #8affb4">Ссылка скопирована!</span>';
+      setTimeout(() => { roomInfoEl.innerHTML = originalText; }, 1500);
+    });
+  });
+}
 
 // Создаём feedback систему с базовым FOV 72 градуса
 const feedbackSystem = createFeedbackSystem({
@@ -262,16 +279,24 @@ function frame(now) {
     updateWorld(world, fixedDelta, eventBus);
   });
 
+  multiplayer.update(now);
+
+  // Камера = вид от третьего лица (чуть сзади корабля), чтобы видеть конус
   if (world.player) {
-    cameraState.position = world.player.position;
+    const offsetDistance = 4.0; // Расстояние от камеры до корабля
+    cameraState.position = {
+      x: world.player.position.x - world.player.forward.x * offsetDistance,
+      y: world.player.position.y - world.player.forward.y * offsetDistance,
+      z: world.player.position.z - world.player.forward.z * offsetDistance,
+    };
     cameraState.orientation = world.player.orientation;
     cameraState.forward = world.player.forward;
     cameraState.right = world.player.right;
     cameraState.up = world.player.up;
-    
-    // Применяем FOV из feedback системы
+
     cameraState.fov = feedbackSystem.getCurrentFov();
   }
+
 
   renderer.render(world, cameraState);
 
