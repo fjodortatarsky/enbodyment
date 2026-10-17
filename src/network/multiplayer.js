@@ -2,32 +2,55 @@
 import { joinRoom } from 'https://esm.sh/@trystero-p2p/torrent';
 import { clone } from '../math/vector.js';
 
-const APP_ID = 'fjodortatarsky-enbodyment-mp-v1';
+const APP_ID = 'com.fjodortatarsky.enbodyment.mp.v2';
 
 export function createMultiplayer(world, eventBus) {
   const urlParams = new URLSearchParams(window.location.search);
-  const roomId = urlParams.get('room') || `room-${Math.random().toString(36).substring(2, 8)}`;
+  let roomId = urlParams.get('room');
   
-  if (!urlParams.has('room')) {
+  if (!roomId) {
+    roomId = `room-${Math.random().toString(36).substring(2, 8)}`;
     const newUrl = new URL(window.location);
     newUrl.searchParams.set('room', roomId);
     window.history.replaceState({}, '', newUrl);
   }
 
-  const room = joinRoom({ appId: APP_ID }, roomId);
+  console.log(`[Multiplayer] Инициализация комнаты: ${roomId}`);
 
-  // 1. makeAction возвращает объект, а не массив!
+  const room = joinRoom({ appId: APP_ID }, roomId);
+  console.log('[Multiplayer] Объект комнаты создан. Ожидаем подключения пиров...');
+
+  // 1. Отслеживаем присоединение (этого не хватало)
+  room.onPeerJoin = (peerId) => {
+    console.log(`✅ [Multiplayer] Пир присоединился: ${peerId}`);
+    if (!world.remotePlayers) world.remotePlayers = new Map();
+    eventBus.emit('network:playerJoined', { peerId });
+  };
+
+  // 2. Отслеживаем отключение
+  room.onPeerLeave = (peerId) => {
+    console.log(`❌ [Multiplayer] Пир отключился: ${peerId}`);
+    if (world.remotePlayers) {
+      world.remotePlayers.delete(peerId);
+    }
+    eventBus.emit('network:playerLeft', { peerId });
+  };
+
+  // 3. Действие для обмена состоянием
   const playerStateAction = room.makeAction('playerState');
 
-  // 2. Подписка через присваивание свойства onMessage
   playerStateAction.onMessage = (state, { peerId }) => {
-    if (!world.remotePlayers) {
-      world.remotePlayers = new Map();
-    }
+    console.log(`📩 [Multiplayer] Получены данные от ${peerId}`, state);
+    if (!world.remotePlayers) world.remotePlayers = new Map();
     
+    const isNew = !world.remotePlayers.has(peerId);
     const remote = world.remotePlayers.get(peerId) || { 
       id: peerId, 
-      position: clone(state.position), 
+      position: {
+        x: state.position.x + (isNew ? (Math.random() - 0.5) * 15 : 0),
+        y: state.position.y + (isNew ? (Math.random() - 0.5) * 15 : 0),
+        z: state.position.z + (isNew ? (Math.random() - 0.5) * 15 : 0)
+      }, 
       targetPosition: clone(state.position),
       forward: clone(state.forward),
       right: clone(state.right),
@@ -47,21 +70,12 @@ export function createMultiplayer(world, eventBus) {
     eventBus.emit('network:playerUpdate', { peerId, state });
   };
 
-  // 3. onPeerLeave — это тоже свойство, а не метод!
-  room.onPeerLeave = (peerId) => {
-    if (world.remotePlayers) {
-      world.remotePlayers.delete(peerId);
-    }
-    eventBus.emit('network:playerLeft', { peerId });
-  };
-
   let lastBroadcast = 0;
-  const broadcastInterval = 100; // Отправляем состояние 10 раз в секунду
+  const broadcastInterval = 100;
 
   function update(now) {
     if (now - lastBroadcast > broadcastInterval && world.player && world.player.alive) {
       lastBroadcast = now;
-      // Отправка через метод send объекта действия
       playerStateAction.send({
         position: world.player.position,
         forward: world.player.forward,
@@ -72,8 +86,5 @@ export function createMultiplayer(world, eventBus) {
     }
   }
 
-  return {
-    roomId,
-    update,
-  };
+  return { roomId, update, room };
 }

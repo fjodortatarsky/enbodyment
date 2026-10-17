@@ -355,11 +355,12 @@ function drawReticle(context, width, height) {
 }
 
 function drawShip(context, camera, basis, focal, width, height, ship, color) {
-  // Интерполяция позиции для плавности движения удалённых игроков
-  const pos = ship.position;
-  const target = ship.targetPosition || pos;
+  // Создаём локальную копию позиции, чтобы не мутировать оригинальный объект (критично для world.player)
+  const pos = { x: ship.position.x, y: ship.position.y, z: ship.position.z };
+  const target = ship.targetPosition || ship.position;
 
   // Плавное приближение к целевой позиции (экспоненциальное сглаживание)
+  // Для локального игрока target === pos, так что изменения будут равны 0
   pos.x += (target.x - pos.x) * 0.2;
   pos.y += (target.y - pos.y) * 0.2;
   pos.z += (target.z - pos.z) * 0.2;

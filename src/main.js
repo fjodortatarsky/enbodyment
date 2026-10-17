@@ -37,20 +37,7 @@ const renderer = createCanvasRenderer(canvas);
 const eventBus = createEventBus();
 const world = createWorld({ seed: 1 });
 
-const multiplayer = createMultiplayer(world, eventBus);
-const roomInfoEl = document.getElementById('room-info');
-const roomIdEl = document.getElementById('room-id');
-if (roomInfoEl && roomIdEl) {
-  roomIdEl.textContent = multiplayer.roomId;
-  roomInfoEl.addEventListener('click', () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url).then(() => {
-      const originalText = roomInfoEl.innerHTML;
-      roomInfoEl.innerHTML = '<span style="color: #8affb4">Ссылка скопирована!</span>';
-      setTimeout(() => { roomInfoEl.innerHTML = originalText; }, 1500);
-    });
-  });
-}
+let multiplayer = null;
 
 // Создаём feedback систему с базовым FOV 72 градуса
 const feedbackSystem = createFeedbackSystem({
@@ -300,40 +287,41 @@ function frame(now) {
 
   renderer.render(world, cameraState);
 
-  if (sensorDebugEl && frameCount % 6 === 0) {
-    const feedbackDebug = feedbackSystem.getDebugInfo();
-    
-    if (!orientationInput.isEnabled()) {
-      sensorDebugEl.textContent = 'Датчики: выкл';
-    } else {
-      const count = orientationInput.getCallCount();
-      const lastEvt = orientationInput.getLastEvent();
+	if(sensorDebugEl && frameCount % 6 === 0) {
+		const feedbackDebug = feedbackSystem.getDebugInfo();
+		const remoteCount = world.remotePlayers ? world.remotePlayers.size : 0; // <-- НОВОЕ
 
-      if (count === 0) {
-        sensorDebugEl.textContent = `Событий: 0\nFOV: ${feedbackDebug.currentFov}`;
-      } else if (lastEvt && world.player) {
-        const qTarget = world.player.targetOrientation;
-        const qCurrent = world.player.orientation;
-        const fwd = world.player.forward;
+		if(!orientationInput.isEnabled()) {
+			sensorDebugEl.textContent = `Датчики: выкл | Игроков в сети: ${remoteCount}`;
+		} else {
+			const count = orientationInput.getCallCount();
+			const lastEvt = orientationInput.getLastEvent();
 
-        const isZeroTarget = qTarget.w === 0 && qTarget.x === 0 && qTarget.y === 0 && qTarget.z === 0;
-        const isZeroCurrent = qCurrent.w === 0 && qCurrent.x === 0 && qCurrent.y === 0 && qCurrent.z === 0;
+			if(count === 0) {
+				sensorDebugEl.textContent = `Событий: 0\nFOV: ${feedbackDebug.currentFov}\nСеть: ${remoteCount} игр.`;
+			} else if(lastEvt && world.player) {
+				const qTarget = world.player.targetOrientation;
+				const qCurrent = world.player.orientation;
+				const fwd = world.player.forward;
+				const isZeroTarget = qTarget.w === 0 && qTarget.x === 0 && qTarget.y === 0 && qTarget.z === 0;
+				const isZeroCurrent = qCurrent.w === 0 && qCurrent.x === 0 && qCurrent.y === 0 && qCurrent.z === 0;
 
-        sensorDebugEl.textContent =
-          `Событий: ${count}\n` +
-          `a:${lastEvt.alpha?.toFixed(0) ?? 'null'} ` +
-          `b:${lastEvt.beta?.toFixed(0) ?? 'null'} ` +
-          `g:${lastEvt.gamma?.toFixed(0) ?? 'null'}\n` +
-          `target: ${isZeroTarget ? 'НУЛЬ' : `w:${qTarget.w.toFixed(2)} x:${qTarget.x.toFixed(2)}`}\n` +
-          `current: ${isZeroCurrent ? 'НУЛЬ' : `w:${qCurrent.w.toFixed(2)}`}\n` +
-          `fwd: ${fwd.x.toFixed(2)},${fwd.y.toFixed(2)},${fwd.z.toFixed(2)}\n` +
-          `FOV: ${feedbackDebug.currentFov} → ${feedbackDebug.targetFov}\n` +
-          `Тяга: ${feedbackDebug.thrustActive ? 'ВКЛ' : 'выкл'}`;
-      } else {
-        sensorDebugEl.textContent = `Событий: ${count} | нет данных\nFOV: ${feedbackDebug.currentFov}`;
-      }
-    }
-  }
+				sensorDebugEl.textContent =
+					`Событий: ${count}\n` +
+					`a:${lastEvt.alpha?.toFixed(0) ?? 'null'}\n` +
+					`b:${lastEvt.beta?.toFixed(0) ?? 'null'}\n` +
+					`g:${lastEvt.gamma?.toFixed(0) ?? 'null'}\n` +
+					`target: ${isZeroTarget ? 'НУЛЬ' : `w:${qTarget.w.toFixed(2)} x:${qTarget.x.toFixed(2)}`}\n` +
+					`current: ${isZeroCurrent ? 'НУЛЬ' : `w:${qCurrent.w.toFixed(2)}`}\n` +
+					`fwd: ${fwd.x.toFixed(2)},${fwd.y.toFixed(2)},${fwd.z.toFixed(2)}\n` +
+					`FOV: ${feedbackDebug.currentFov} → ${feedbackDebug.targetFov}\n` +
+					`Тяга: ${feedbackDebug.thrustActive ? 'ВКЛ' : 'выкл'}\n` +
+					`Сеть: ${remoteCount} игр.`; // <-- НОВОЕ
+			} else {
+				sensorDebugEl.textContent = `Событий: ${count} | нет данных\nFOV: ${feedbackDebug.currentFov}\nСеть: ${remoteCount} игр.`;
+			}
+		}
+	}
 
   requestAnimationFrame(frame);
 }
@@ -422,22 +410,57 @@ function toggleFullscreen() {
   document.documentElement.requestFullscreen().catch(() => {});
 }
 
+// Удалите эту строку:
+// const multiplayer = createMultiplayer(world, eventBus);
+
+// Вместо этого объявим переменную:
+
 const loginScreen = document.getElementById('login-screen');
 const btnStartGame = document.getElementById('btn-start-game');
 const btnGenerateId = document.getElementById('btn-generate-id');
 const networkIdInput = document.getElementById('network-id-input');
 
+// При нажатии "Сгенерировать ID" - создаём случайный ID
 btnGenerateId?.addEventListener('click', () => {
-  console.log('Генерация ID: пока не реализовано');
+  const generatedId = `room-${Math.random().toString(36).substring(2, 8)}`;
+  if (networkIdInput) {
+    networkIdInput.value = generatedId;
+  }
 });
 
 btnStartGame?.addEventListener('click', async () => {
   if (loginScreen) {
     loginScreen.style.display = 'none';
   }
-
   toggleFullscreen();
-
+  
+  // Берём ID из input поля, если он есть, иначе генерируем новый
+  const customRoomId = networkIdInput?.value?.trim();
+  const roomId = customRoomId || `room-${Math.random().toString(36).substring(2, 8)}`;
+  
+  // Обновляем URL с правильным ID
+  const newUrl = new URL(window.location);
+  newUrl.searchParams.set('room', roomId);
+  window.history.replaceState({}, '', newUrl);
+  
+  // Теперь инициализируем multiplayer с правильным ID
+  multiplayer = createMultiplayer(world, eventBus);
+  
+  // Обновляем отображение ID в UI
+  const roomIdEl = document.getElementById('room-id');
+  const roomInfoEl = document.getElementById('room-info');
+  if (roomInfoEl && roomIdEl) {
+    roomIdEl.textContent = multiplayer.roomId;
+    roomInfoEl.addEventListener('click', () => {
+      const url = window.location.href;
+      navigator.clipboard.writeText(url).then(() => {
+        const originalText = roomInfoEl.innerHTML;
+        roomInfoEl.innerHTML = '<span style="color: #8affb4">Ссылка скопирована!</span>';
+        setTimeout(() => { roomInfoEl.innerHTML = originalText; }, 1500);
+      });
+    });
+  }
+  
   if (orientationInput && !orientationInput.isEnabled()) {
     try {
       const result = await orientationInput.enable();
@@ -451,3 +474,4 @@ btnStartGame?.addEventListener('click', async () => {
     }
   }
 });
+
