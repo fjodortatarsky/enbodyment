@@ -262,11 +262,13 @@ function frame(now) {
   // Обновляем feedback систему
   feedbackSystem.update(frameDelta);
 
-  clock.update(frameDelta, world.timeScale, (fixedDelta) => {
+	clock.update(frameDelta, world.timeScale, (fixedDelta) => {
     updateWorld(world, fixedDelta, eventBus);
   });
 
-  multiplayer.update(now);
+  if (multiplayer) {
+    multiplayer.update(now);
+  }
 
   // Камера = вид от третьего лица (чуть сзади корабля), чтобы видеть конус
   if (world.player) {
@@ -419,6 +421,12 @@ const loginScreen = document.getElementById('login-screen');
 const btnStartGame = document.getElementById('btn-start-game');
 const btnGenerateId = document.getElementById('btn-generate-id');
 const networkIdInput = document.getElementById('network-id-input');
+
+const urlParamsInit = new URLSearchParams(window.location.search);
+const roomFromUrl = urlParamsInit.get('room');
+if (roomFromUrl && networkIdInput) {
+  networkIdInput.value = roomFromUrl;
+}
 
 // При нажатии "Сгенерировать ID" - создаём случайный ID
 btnGenerateId?.addEventListener('click', () => {

@@ -80,7 +80,7 @@ export function createPlayer(world) {
 
     isStatic: false,
     gravitySource: false,
-    affectedByGravity: true,
+    affectedByGravity: false,// true,
 
     thrust: false,
     brake: false,

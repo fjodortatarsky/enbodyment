@@ -2,55 +2,36 @@
 import { joinRoom } from 'https://esm.sh/@trystero-p2p/torrent';
 import { clone } from '../math/vector.js';
 
-const APP_ID = 'com.fjodortatarsky.enbodyment.mp.v2';
+const APP_ID = 'fjodortatarsky-enbodyment-mp-v1';
 
 export function createMultiplayer(world, eventBus) {
   const urlParams = new URLSearchParams(window.location.search);
-  let roomId = urlParams.get('room');
+  const roomId = urlParams.get('room') || `room-${Math.random().toString(36).substring(2, 8)}`;
   
-  if (!roomId) {
-    roomId = `room-${Math.random().toString(36).substring(2, 8)}`;
+  if (!urlParams.has('room')) {
     const newUrl = new URL(window.location);
     newUrl.searchParams.set('room', roomId);
     window.history.replaceState({}, '', newUrl);
   }
 
-  console.log(`[Multiplayer] Инициализация комнаты: ${roomId}`);
-
   const room = joinRoom({ appId: APP_ID }, roomId);
-  console.log('[Multiplayer] Объект комнаты создан. Ожидаем подключения пиров...');
 
-  // 1. Отслеживаем присоединение (этого не хватало)
-  room.onPeerJoin = (peerId) => {
-    console.log(`✅ [Multiplayer] Пир присоединился: ${peerId}`);
-    if (!world.remotePlayers) world.remotePlayers = new Map();
-    eventBus.emit('network:playerJoined', { peerId });
-  };
-
-  // 2. Отслеживаем отключение
-  room.onPeerLeave = (peerId) => {
-    console.log(`❌ [Multiplayer] Пир отключился: ${peerId}`);
-    if (world.remotePlayers) {
-      world.remotePlayers.delete(peerId);
-    }
-    eventBus.emit('network:playerLeft', { peerId });
-  };
-
-  // 3. Действие для обмена состоянием
   const playerStateAction = room.makeAction('playerState');
 
   playerStateAction.onMessage = (state, { peerId }) => {
-    //console.log(`📩 [Multiplayer] Получены данные от ${peerId}`, state);
-    if (!world.remotePlayers) world.remotePlayers = new Map();
+    // ЗАЩИТА: игнорируем некорректные пакеты, чтобы не сломать рендер и интерполяцию
+    if (!state || !state.position || !state.forward) {
+      console.warn('Получено некорректное состояние от', peerId, state);
+      return;
+    }
+
+    if (!world.remotePlayers) {
+      world.remotePlayers = new Map();
+    }
     
-    const isNew = !world.remotePlayers.has(peerId);
     const remote = world.remotePlayers.get(peerId) || { 
       id: peerId, 
-      position: {
-        x: state.position.x + (isNew ? (Math.random() - 0.5) * 15 : 0),
-        y: state.position.y + (isNew ? (Math.random() - 0.5) * 15 : 0),
-        z: state.position.z + (isNew ? (Math.random() - 0.5) * 15 : 0)
-      }, 
+      position: clone(state.position), 
       targetPosition: clone(state.position),
       forward: clone(state.forward),
       right: clone(state.right),
@@ -70,10 +51,27 @@ export function createMultiplayer(world, eventBus) {
     eventBus.emit('network:playerUpdate', { peerId, state });
   };
 
+  room.onPeerLeave = (peerId) => {
+    if (world.remotePlayers) {
+      world.remotePlayers.delete(peerId);
+    }
+    eventBus.emit('network:playerLeft', { peerId });
+  };
+
   let lastBroadcast = 0;
   const broadcastInterval = 100;
 
   function update(now) {
+    // ОЧИСТКА: удаляем игроков, от которых не было обновлений дольше 5 секунд
+    // Это предотвращает "мерцание" и зависание кораблей при обрыве соединения
+    if (world.remotePlayers) {
+      for (const [peerId, remote] of world.remotePlayers.entries()) {
+        if (now - remote.lastUpdate > 5000) {
+          world.remotePlayers.delete(peerId);
+        }
+      }
+    }
+
     if (now - lastBroadcast > broadcastInterval && world.player && world.player.alive) {
       lastBroadcast = now;
       playerStateAction.send({
@@ -86,5 +84,8 @@ export function createMultiplayer(world, eventBus) {
     }
   }
 
-  return { roomId, update, room };
+  return {
+    roomId,
+    update,
+  };
 }
