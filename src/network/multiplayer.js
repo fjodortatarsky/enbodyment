@@ -40,7 +40,7 @@ export function createMultiplayer(world, eventBus) {
   const playerStateAction = room.makeAction('playerState');
 
   playerStateAction.onMessage = (state, { peerId }) => {
-    console.log(`📩 [Multiplayer] Получены данные от ${peerId}`, state);
+    //console.log(`📩 [Multiplayer] Получены данные от ${peerId}`, state);
     if (!world.remotePlayers) world.remotePlayers = new Map();
     
     const isNew = !world.remotePlayers.has(peerId);
