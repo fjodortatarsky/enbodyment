@@ -6,22 +6,21 @@ const APP_ID = 'fjodortatarsky-enbodyment-mp-v1';
 
 export function createMultiplayer(world, eventBus) {
   const urlParams = new URLSearchParams(window.location.search);
-  // Если комнаты нет в URL, генерируем случайную
   const roomId = urlParams.get('room') || `room-${Math.random().toString(36).substring(2, 8)}`;
   
-  // Обновляем URL без перезагрузки страницы, чтобы можно было скопировать ссылку
   if (!urlParams.has('room')) {
     const newUrl = new URL(window.location);
     newUrl.searchParams.set('room', roomId);
     window.history.replaceState({}, '', newUrl);
   }
 
-  // Теперь joinRoom импортируется напрямую из пакета torrent
   const room = joinRoom({ appId: APP_ID }, roomId);
 
-  const [sendPlayerState, onPlayerState] = room.makeAction('playerState');
+  // 1. makeAction возвращает объект, а не массив!
+  const playerStateAction = room.makeAction('playerState');
 
-  onPlayerState((state, peerId) => {
+  // 2. Подписка через присваивание свойства onMessage
+  playerStateAction.onMessage = (state, { peerId }) => {
     if (!world.remotePlayers) {
       world.remotePlayers = new Map();
     }
@@ -46,14 +45,15 @@ export function createMultiplayer(world, eventBus) {
 
     world.remotePlayers.set(peerId, remote);
     eventBus.emit('network:playerUpdate', { peerId, state });
-  });
+  };
 
-  room.onPeerLeave((peerId) => {
+  // 3. onPeerLeave — это тоже свойство, а не метод!
+  room.onPeerLeave = (peerId) => {
     if (world.remotePlayers) {
       world.remotePlayers.delete(peerId);
     }
     eventBus.emit('network:playerLeft', { peerId });
-  });
+  };
 
   let lastBroadcast = 0;
   const broadcastInterval = 100; // Отправляем состояние 10 раз в секунду
@@ -61,7 +61,8 @@ export function createMultiplayer(world, eventBus) {
   function update(now) {
     if (now - lastBroadcast > broadcastInterval && world.player && world.player.alive) {
       lastBroadcast = now;
-      sendPlayerState({
+      // Отправка через метод send объекта действия
+      playerStateAction.send({
         position: world.player.position,
         forward: world.player.forward,
         right: world.player.right,
